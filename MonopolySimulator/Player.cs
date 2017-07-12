@@ -30,9 +30,9 @@ namespace MonopolySimulator
             currentPosition.owner.IncreaseBalance(rentDue);
         }
 
-        public bool WantsToPurchase(Position currentPosition)
+        public bool WantsToPurchasePosition(Position currentPosition)
         {
-            return true; //Wants to buy all atm. 
+            return CanAffordExpense(currentPosition.cost) && true; //Wants to buy all atm. 
         }
 
         public void Roll(Random rnd)
@@ -65,6 +65,16 @@ namespace MonopolySimulator
         public void KillPlayer()
         {
             PlayerIsAlive = false;
+        }
+
+        public bool WantsToPurchaseBuildingAtPosition(Position property)
+        {
+            return CanAffordExpense(property.house) && property.buildingCount <= 3;
+        }
+
+        public bool CanAffordExpense(int amount)
+        {
+            return Balance - amount >= 0;
         }
     }
 }

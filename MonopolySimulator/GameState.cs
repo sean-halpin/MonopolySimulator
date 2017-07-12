@@ -64,18 +64,41 @@ namespace MonopolySimulator
                         throw new ArgumentOutOfRangeException();
                 }
 
+                SimulatePlayerRealEstateDecision(_activePlayer);
+
                 _activePlayer = GetNextPlayer(_activePlayer);
             }
 
             _players.ForEach(p =>
             {
-                Console.WriteLine("Id:{0}\tBalance:{1}\tRolls:{2}\tProperties:{3}\tAlive:{4}",
+                Console.WriteLine("Id:{0}\tBalance:{1}\tRolls:{2}\tPositions:{3}\tAlive:{4}\tHouses{5}",
                     p.Id,
                     p.Balance,
                     p.Rolls.Count,
                     p.PositionsAcquired.Count,
-                    p.PlayerIsAlive);
+                    p.PlayerIsAlive,
+                    p.PositionsAcquired.Sum(pos => pos.buildingCount));
             });
+        }
+
+        private void SimulatePlayerRealEstateDecision(Player activePlayer)
+        {
+            var playersPositionsFormingMonopoliesForPlayer = GetPlayersPositionsFormingMonopoliesForPlayer(activePlayer);
+            foreach (var position in playersPositionsFormingMonopoliesForPlayer)
+            {
+                if (!activePlayer.WantsToPurchaseBuildingAtPosition(position) ||
+                    position.MaxBuildingsReached()) continue;
+                activePlayer.DecreaseBalance(position.house);
+                position.AddBuilding(1);
+            }
+        }
+
+        private IEnumerable<Position> GetPlayersPositionsFormingMonopoliesForPlayer(Player activePlayer)
+        {
+            return _activePlayer.PositionsAcquired.Where(p => p.type == PositionType.property)
+                .Where(property => _positions.Where(p => p.@group != null && p.@group[0] == property.@group[0])
+                    .All(p => p.owner != null && p.owner.Id == activePlayer.Id))
+                .ToList();
         }
 
         private void SimulateLandOnTax(Player activePlayer, Position currentPosition)
@@ -123,7 +146,7 @@ namespace MonopolySimulator
             }
             else
             {
-                if (activePlayer.WantsToPurchase(currentPosition))
+                if (activePlayer.WantsToPurchasePosition(currentPosition))
                 {
                     if (activePlayer.Balance >= currentPosition.cost)
                     {

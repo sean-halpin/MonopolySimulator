@@ -6,7 +6,7 @@ namespace MonopolySimulator
     {
         public static void Main(string[] args)
         {
-            for (var i = 0; i < 1000; i++)
+            for (var i = 0; i < 100; i++)
             {
                 var seed = (int)((DateTime.Now.ToUniversalTime().Subtract(
                     new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
