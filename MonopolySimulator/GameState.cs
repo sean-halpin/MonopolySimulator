@@ -10,57 +10,41 @@ namespace MonopolySimulator
     {
         private readonly List<Player> _players;
         private readonly List<Position> _positions;
-        private readonly Random _rnd;
+        private readonly Random _random;
         private Player _activePlayer;
-        private bool _gameFinished = false;
 
-        public GameState(Random rnd, int playerCount, int startingCash)
+        public GameState(Random random, int playerCount, int startingBalance)
         {
-            _rnd = rnd;
-            _players = PreparePlayers(startingCash, playerCount);
+            _random = random;
+            _players = PreparePlayers(playerCount, startingBalance);
             _activePlayer = _players[0];
             _positions = JsonConvert.DeserializeObject<List<Position>>(File.ReadAllText("board.json"));
         }
 
-        private static List<Player> PreparePlayers(int startingCash = 1200, int playerCount = 4)
+        private static List<Player> PreparePlayers(int playerCount, int startingBalance)
         {
-            return Enumerable.Range(0, playerCount).Select(e => new Player
-            {
-                Id = e,
-                Balance = startingCash,
-                PositionsAcquired = new List<Position>(),
-                Position = 0,
-                Imprisoned = false,
-                PlayerIsAlive = true,
-                Rolls = new Queue<DiceRoll>(3)
-            }).ToList();
+            return Enumerable.Range(0, playerCount).Select(e => Player.CreateNew(e, startingBalance)).ToList();
         }
 
         public void RunSimulation()
         {
-            while (GameIsInProgress(_players))
+            while (GameInProgress(_players))
             {
-                var roll = new DiceRoll(_rnd).Roll();
-
-                _activePlayer.Rolls.Enqueue(roll);
-                _activePlayer.Position = (_activePlayer.Position + roll.TotalValue()) % _positions.Count;
+                _activePlayer.Roll(_random);
                 var currentPosition = _positions[_activePlayer.Position];
 
                 switch (currentPosition.type)
                 {
                     case PositionType.go:
-                        _activePlayer.Balance += 200;
+                        SimulatePassingGo(_activePlayer);
                         break;
                     case PositionType.property:
-                        if (currentPosition.HasOwner())
-                            _activePlayer.PayRent(currentPosition);
-                        else
-                            SimulateVacantPropertyLanding(currentPosition);
+                        SimulateLandOnVacantProperty(_activePlayer, currentPosition);
                         break;
                     case PositionType.communitychest:
                         break;
                     case PositionType.tax:
-                        _activePlayer.Balance -= currentPosition.cost;
+                        _activePlayer.DecreaseBalance(currentPosition.cost);
                         break;
                     case PositionType.railroad:
                         break;
@@ -97,10 +81,9 @@ namespace MonopolySimulator
             });
         }
 
-        private bool GameIsInProgress(List<Player> players)
-        {
-            return players.Count(p => p.PlayerIsAlive) > 1;
-        }
+        private void SimulatePassingGo(Player activePlayer) => activePlayer.IncreaseBalance(200);
+
+        private bool GameInProgress(List<Player> players) => players.Count(p => p.PlayerIsAlive) > 1;
 
         private Player GetNextPlayer(Player activePlayer)
         {
@@ -108,19 +91,24 @@ namespace MonopolySimulator
             return remainingPlayers[(remainingPlayers.IndexOf(activePlayer) + 1) % remainingPlayers.Count];
         }
 
-        private void SimulateVacantPropertyLanding(Position currentPosition)
+        private void SimulateLandOnVacantProperty(Player activeplayer, Position currentPosition)
         {
-            if (_activePlayer.WantsToPurchase(currentPosition))
-            {
-                if (_activePlayer.Balance >= currentPosition.cost)
-                {
-                    _activePlayer.PositionsAcquired.Add(currentPosition);
-                    currentPosition.owner = _activePlayer;
-                }
-            }
+            if (currentPosition.HasOwner())
+                _activePlayer.PayRent(currentPosition);
             else
             {
-                SimulateAuction(currentPosition);
+                if (activeplayer.WantsToPurchase(currentPosition))
+                {
+                    if (activeplayer.Balance >= currentPosition.cost)
+                    {
+                        activeplayer.PositionsAcquired.Add(currentPosition);
+                        currentPosition.owner = activeplayer;
+                    }
+                }
+                else
+                {
+                    SimulateAuction(currentPosition);
+                }
             }
         }
 
