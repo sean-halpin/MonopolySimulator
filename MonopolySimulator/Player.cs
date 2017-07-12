@@ -21,7 +21,7 @@ namespace MonopolySimulator
         public List<Position> PositionsAcquired { get; set; }
         public int Balance { get; private set; }
         public bool Imprisoned { get; set; }
-        public bool PlayerIsAlive { get; set; }
+        public bool PlayerIsAlive { get; private set; }
 
         public void PayRent(Position currentPosition)
         {
@@ -55,6 +55,16 @@ namespace MonopolySimulator
         public void DecreaseBalance(int amount)
         {
             Balance -= amount;
+        }
+
+        public bool HasBeenBankrupted()
+        {
+            return Balance < 0;
+        }
+
+        public void KillPlayer()
+        {
+            PlayerIsAlive = false;
         }
     }
 }

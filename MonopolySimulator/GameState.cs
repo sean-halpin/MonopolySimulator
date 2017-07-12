@@ -44,7 +44,7 @@ namespace MonopolySimulator
                     case PositionType.communitychest:
                         break;
                     case PositionType.tax:
-                        _activePlayer.DecreaseBalance(currentPosition.cost);
+                        SimulateLandOnTax(_activePlayer, currentPosition);
                         break;
                     case PositionType.railroad:
                         break;
@@ -64,9 +64,6 @@ namespace MonopolySimulator
                         throw new ArgumentOutOfRangeException();
                 }
 
-                if (_activePlayer.Balance < 0)
-                    _activePlayer.PlayerIsAlive = false;
-
                 _activePlayer = GetNextPlayer(_activePlayer);
             }
 
@@ -81,34 +78,73 @@ namespace MonopolySimulator
             });
         }
 
-        private void SimulatePassingGo(Player activePlayer) => activePlayer.IncreaseBalance(200);
+        private void SimulateLandOnTax(Player activePlayer, Position currentPosition)
+        {
+            activePlayer.DecreaseBalance(currentPosition.cost);
+            if (activePlayer.HasBeenBankrupted())
+                SimulateBankruptcyByBanker(activePlayer);
+        }
 
-        private bool GameInProgress(List<Player> players) => players.Count(p => p.PlayerIsAlive) > 1;
+        private void SimulateBankruptcyByBanker(Player activePlayer)
+        {
+            activePlayer.KillPlayer();
+            foreach (var property in activePlayer.PositionsAcquired)
+            {
+                property.buildingCount = 0;
+                property.owner = null;
+            }
+            var propertiesToBeAuctionedImmediately = activePlayer.PositionsAcquired;
+        }
+
+        private void SimulatePassingGo(Player activePlayer)
+        {
+            activePlayer.IncreaseBalance(200);
+        }
+
+        private bool GameInProgress(List<Player> players)
+        {
+            return players.Count(p => p.PlayerIsAlive) > 1;
+        }
 
         private Player GetNextPlayer(Player activePlayer)
         {
-            var remainingPlayers = _players.Where(player => player.PlayerIsAlive).ToList();
+            var remainingPlayers = _players.Where(player => player.PlayerIsAlive || player.Id == activePlayer.Id)
+                .ToList();
             return remainingPlayers[(remainingPlayers.IndexOf(activePlayer) + 1) % remainingPlayers.Count];
         }
 
-        private void SimulateLandOnVacantProperty(Player activeplayer, Position currentPosition)
+        private void SimulateLandOnVacantProperty(Player activePlayer, Position currentPosition)
         {
             if (currentPosition.HasOwner())
-                _activePlayer.PayRent(currentPosition);
+            {
+                activePlayer.PayRent(currentPosition);
+                if (activePlayer.HasBeenBankrupted())
+                    SimulateBankruptcyByPlayer(activePlayer, currentPosition.owner);
+            }
             else
             {
-                if (activeplayer.WantsToPurchase(currentPosition))
+                if (activePlayer.WantsToPurchase(currentPosition))
                 {
-                    if (activeplayer.Balance >= currentPosition.cost)
+                    if (activePlayer.Balance >= currentPosition.cost)
                     {
-                        activeplayer.PositionsAcquired.Add(currentPosition);
-                        currentPosition.owner = activeplayer;
+                        activePlayer.PositionsAcquired.Add(currentPosition);
+                        currentPosition.owner = activePlayer;
                     }
                 }
                 else
                 {
                     SimulateAuction(currentPosition);
                 }
+            }
+        }
+
+        private void SimulateBankruptcyByPlayer(Player activePlayer, Player currentPositionOwner)
+        {
+            activePlayer.KillPlayer();
+            foreach (var property in activePlayer.PositionsAcquired)
+            {
+                property.buildingCount = 0;
+                property.owner = currentPositionOwner;
             }
         }
 

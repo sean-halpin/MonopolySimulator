@@ -6,7 +6,15 @@ namespace MonopolySimulator
     {
         public static void Main(string[] args)
         {
-            new GameState(new Random(), 4, 1200).RunSimulation();
+            for (var i = 0; i < 1000; i++)
+            {
+                var seed = (int)((DateTime.Now.ToUniversalTime().Subtract(
+                    new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+                ).TotalMilliseconds) % int.MaxValue);
+                Console.WriteLine(seed);
+                new GameState(new Random(seed), 4, 1200).RunSimulation();
+                Console.WriteLine();
+            }
             Console.ReadLine();
         }
     }
