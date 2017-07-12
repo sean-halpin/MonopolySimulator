@@ -7,6 +7,8 @@ namespace MonopolySimulator
 {
     internal class Position
     {
+        public int buildingCount { get; set; }
+
         public Name name { get; set; }
         public PositionType type { get; set; }
         public Player owner { get; set; }
@@ -16,6 +18,11 @@ namespace MonopolySimulator
         public List<int> rent { get; set; }
         public List<int> group { get; set; }
         public int house { get; set; }
+
+        public bool HasOwner()
+        {
+            return owner != null;
+        }
     }
 
 

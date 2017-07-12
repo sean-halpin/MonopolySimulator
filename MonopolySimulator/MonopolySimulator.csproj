@@ -48,6 +48,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ChanceCards.cs" />
+    <Compile Include="CommunityChestCards.cs" />
+    <Compile Include="DiceRoll.cs" />
+    <Compile Include="GameState.cs" />
+    <Compile Include="Player.cs" />
     <Compile Include="Position.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
