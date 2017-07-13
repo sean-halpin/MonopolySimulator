@@ -1,4 +1,4 @@
-﻿namespace MonopolySimulator
+﻿namespace MonopolySimulator.Enums
 {
     internal enum ChanceCards
     {

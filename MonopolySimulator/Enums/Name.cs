@@ -1,56 +1,9 @@
-﻿using System.Collections.Generic;
 using System.Runtime.Serialization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace MonopolySimulator
+namespace MonopolySimulator.Enums
 {
-    internal class Position
-    {
-        public int buildingCount { get; set; }
-
-        public Name name { get; set; }
-        public PositionType type { get; set; }
-        public Player owner { get; set; }
-        public bool corner { get; set; }
-        public int cost { get; set; }
-        public string color { get; set; }
-        public List<int> rent { get; set; }
-        public List<int> group { get; set; }
-        public int house { get; set; }
-
-        public bool HasOwner()
-        {
-            return owner != null;
-        }
-
-        public bool MaxBuildingsReached()
-        {
-            return buildingCount >= 5;
-        }
-
-        public void AddBuilding(int i)
-        {
-            buildingCount += 1;
-        }
-    }
-
-
-    [JsonConverter(typeof(StringEnumConverter))]
-    internal enum PositionType
-    {
-        go,
-        property,
-        communitychest,
-        tax,
-        railroad,
-        chance,
-        jail,
-        utility,
-        freeparking,
-        gotojail
-    }
-
     [JsonConverter(typeof(StringEnumConverter))]
     internal enum Name
     {

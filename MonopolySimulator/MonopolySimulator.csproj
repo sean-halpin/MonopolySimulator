@@ -48,18 +48,20 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ChanceCards.cs" />
-    <Compile Include="CommunityChestCards.cs" />
-    <Compile Include="DiceRoll.cs" />
-    <Compile Include="GameState.cs" />
-    <Compile Include="Player.cs" />
-    <Compile Include="Position.cs" />
+    <Compile Include="Enums\ChanceCards.cs" />
+    <Compile Include="Enums\CommunityChestCards.cs" />
+    <Compile Include="DomainModel\DiceRoll.cs" />
+    <Compile Include="DomainModel\GameEngine.cs" />
+    <Compile Include="Enums\Name.cs" />
+    <Compile Include="DomainModel\Player.cs" />
+    <Compile Include="DomainModel\Position.cs" />
+    <Compile Include="Enums\PositionType.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-    <None Include="board.json">
+    <None Include="BoardTemplate\board.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="packages.config" />

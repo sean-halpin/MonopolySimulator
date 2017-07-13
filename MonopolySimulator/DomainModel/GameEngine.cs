@@ -2,23 +2,24 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using MonopolySimulator.Enums;
 using Newtonsoft.Json;
 
-namespace MonopolySimulator
+namespace MonopolySimulator.DomainModel
 {
-    internal class GameState
+    internal class GameEngine
     {
         private readonly List<Player> _players;
         private readonly List<Position> _positions;
         private readonly Random _random;
         private Player _activePlayer;
 
-        public GameState(Random random, int playerCount, int startingBalance)
+        public GameEngine(Random random, int playerCount, int startingBalance)
         {
             _random = random;
             _players = PreparePlayers(playerCount, startingBalance);
             _activePlayer = _players[0];
-            _positions = JsonConvert.DeserializeObject<List<Position>>(File.ReadAllText("board.json"));
+            _positions = JsonConvert.DeserializeObject<List<Position>>(File.ReadAllText(@"BoardTemplate\board.json"));
         }
 
         private static List<Player> PreparePlayers(int playerCount, int startingBalance)
@@ -30,8 +31,8 @@ namespace MonopolySimulator
         {
             while (GameInProgress(_players))
             {
-                _activePlayer.Roll(_random);
-                var currentPosition = _positions[_activePlayer.Position];
+                _activePlayer.RollAndUpdatePosition(_random);
+                var currentPosition = _positions[_activePlayer.PositionIndex];
 
                 switch (currentPosition.type)
                 {
@@ -51,14 +52,14 @@ namespace MonopolySimulator
                     case PositionType.chance:
                         break;
                     case PositionType.jail:
+                        SimulateLandOnJail(_activePlayer, _random);
                         break;
                     case PositionType.utility:
                         break;
                     case PositionType.freeparking:
                         break;
                     case PositionType.gotojail:
-                        _activePlayer.Imprisoned = true;
-                        _activePlayer.Position = _positions.IndexOf(_positions.First(p => p.name == Name.Jail));
+                        SimulateLandOnGoToJail(_activePlayer);
                         break;
                     default:
                         throw new ArgumentOutOfRangeException();
@@ -77,13 +78,28 @@ namespace MonopolySimulator
                     p.Rolls.Count,
                     p.PositionsAcquired.Count,
                     p.PlayerIsAlive,
-                    p.PositionsAcquired.Sum(pos => pos.buildingCount));
+                    p.PositionsAcquired.Sum(pos => pos.BuildingCount));
             });
+        }
+
+        private static void SimulateLandOnJail(Player activePlayer, Random random)
+        {
+            if (activePlayer.Imprisoned)
+            {
+                activePlayer.RollInPrison(random);
+                if (activePlayer.ShouldBeReleasedFromPrison())
+                    activePlayer.ReleaseFromPrison();
+            }
+        }
+
+        private static void SimulateLandOnGoToJail(Player activePlayer)
+        {
+            activePlayer.Imprison();
         }
 
         private void SimulatePlayerRealEstateDecision(Player activePlayer)
         {
-            var playersPositionsFormingMonopoliesForPlayer = GetPlayersPositionsFormingMonopoliesForPlayer(activePlayer);
+            var playersPositionsFormingMonopoliesForPlayer = GetPositionsFormingMonopoliesForPlayer(activePlayer);
             foreach (var position in playersPositionsFormingMonopoliesForPlayer)
             {
                 if (!activePlayer.WantsToPurchaseBuildingAtPosition(position) ||
@@ -93,10 +109,10 @@ namespace MonopolySimulator
             }
         }
 
-        private IEnumerable<Position> GetPlayersPositionsFormingMonopoliesForPlayer(Player activePlayer)
+        private IEnumerable<Position> GetPositionsFormingMonopoliesForPlayer(Player activePlayer)
         {
             return _activePlayer.PositionsAcquired.Where(p => p.type == PositionType.property)
-                .Where(property => _positions.Where(p => p.@group != null && p.@group[0] == property.@group[0])
+                .Where(property => _positions.Where(p => p.group != null && p.group[0] == property.group[0])
                     .All(p => p.owner != null && p.owner.Id == activePlayer.Id))
                 .ToList();
         }
@@ -110,21 +126,23 @@ namespace MonopolySimulator
 
         private void SimulateBankruptcyByBanker(Player activePlayer)
         {
-            activePlayer.KillPlayer();
             foreach (var property in activePlayer.PositionsAcquired)
             {
-                property.buildingCount = 0;
-                property.owner = null;
+                property.DemolishBuildings();
+                property.Repossess();
             }
             var propertiesToBeAuctionedImmediately = activePlayer.PositionsAcquired;
+            foreach (var property in propertiesToBeAuctionedImmediately)
+                SimulateAuction(property);
+            activePlayer.KillPlayer();
         }
 
-        private void SimulatePassingGo(Player activePlayer)
+        private static void SimulatePassingGo(Player activePlayer)
         {
             activePlayer.IncreaseBalance(200);
         }
 
-        private bool GameInProgress(List<Player> players)
+        private static bool GameInProgress(IEnumerable<Player> players)
         {
             return players.Count(p => p.PlayerIsAlive) > 1;
         }
@@ -147,28 +165,20 @@ namespace MonopolySimulator
             else
             {
                 if (activePlayer.WantsToPurchasePosition(currentPosition))
-                {
-                    if (activePlayer.Balance >= currentPosition.cost)
-                    {
-                        activePlayer.PositionsAcquired.Add(currentPosition);
-                        currentPosition.owner = activePlayer;
-                    }
-                }
+                    activePlayer.PurchasePosition(currentPosition);
                 else
-                {
                     SimulateAuction(currentPosition);
-                }
             }
         }
 
-        private void SimulateBankruptcyByPlayer(Player activePlayer, Player currentPositionOwner)
+        private static void SimulateBankruptcyByPlayer(Player activePlayer, Player currentPositionOwner)
         {
-            activePlayer.KillPlayer();
             foreach (var property in activePlayer.PositionsAcquired)
             {
-                property.buildingCount = 0;
-                property.owner = currentPositionOwner;
+                property.DemolishBuildings();
+                property.AssignNewOwner(currentPositionOwner);
             }
+            activePlayer.KillPlayer();
         }
 
         private void SimulateAuction(Position currentPosition)

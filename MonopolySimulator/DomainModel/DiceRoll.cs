@@ -1,6 +1,6 @@
 using System;
 
-namespace MonopolySimulator
+namespace MonopolySimulator.DomainModel
 {
     internal class DiceRoll
     {
@@ -23,6 +23,11 @@ namespace MonopolySimulator
         public int TotalValue()
         {
             return _dieValue1 + _dieValue2;
+        }
+
+        public bool IsADouble()
+        {
+            return _dieValue1 == _dieValue2;
         }
     }
 }
