@@ -41,12 +41,15 @@ namespace MonopolySimulator.DomainModel
 
         public void RollAndUpdatePosition(Random rnd)
         {
-            var roll = new DiceRoll(rnd).Roll();
-            Rolls.Add(roll);
-            if (LastThreeRollsWereDoubles())
-                Imprison();
-            else
-                MoveForward(roll.TotalValue());
+            if (!Imprisoned)
+            {
+                var roll = new DiceRoll(rnd).Roll();
+                Rolls.Add(roll);
+                if (LastThreeRollsWereDoubles())
+                    Imprison();
+                else
+                    MoveForward(roll.TotalValue());
+            }
         }
 
         private bool LastThreeRollsWereDoubles()
@@ -124,6 +127,7 @@ namespace MonopolySimulator.DomainModel
 
         public void ReleaseFromPrison()
         {
+            Imprisoned = false;
             MoveForward(RollsInPrison.Last().TotalValue());
             RollsInPrison.Clear();
         }
