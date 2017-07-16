@@ -9,11 +9,12 @@ namespace MonopolySimulator
         {
             for (var i = 0; i < 100; i++)
             {
-                var seed = (int) (DateTime.Now.ToUniversalTime().Subtract(
-                                      new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-                                  ).TotalMilliseconds % int.MaxValue);
+                var seed = (int)(DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds % int.MaxValue);
                 Console.WriteLine(seed);
-                new GameEngine(new Random(seed), 4, 1200).RunSimulation();
+                var random = new Random(seed);
+                var communityChestEngine = new CommunityChestEngine(random);
+                communityChestEngine.Initialise();
+                new GameEngine(random, communityChestEngine, 4, 1200).RunSimulation();
                 Console.WriteLine();
             }
             Console.ReadLine();

@@ -12,11 +12,13 @@ namespace MonopolySimulator.DomainModel
         private readonly List<Player> _players;
         private readonly List<Position> _positions;
         private readonly Random _random;
+        private readonly CommunityChestEngine _communityChestEngine;
         private Player _activePlayer;
 
-        public GameEngine(Random random, int playerCount, int startingBalance)
+        public GameEngine(Random random, CommunityChestEngine communityChestEngine, int playerCount, int startingBalance)
         {
             _random = random;
+            _communityChestEngine = communityChestEngine;
             _players = PreparePlayers(playerCount, startingBalance);
             _activePlayer = _players[0];
             _positions = JsonConvert.DeserializeObject<List<Position>>(File.ReadAllText(@"BoardTemplate\board.json"));
@@ -43,6 +45,7 @@ namespace MonopolySimulator.DomainModel
                         SimulateLandOnVacantProperty(_activePlayer, currentPosition);
                         break;
                     case PositionType.communitychest:
+                        SimulateCommunityChest(_activePlayer, _players);
                         break;
                     case PositionType.tax:
                         SimulateLandOnTax(_activePlayer, currentPosition);
@@ -80,6 +83,13 @@ namespace MonopolySimulator.DomainModel
                     p.PlayerIsAlive,
                     p.PositionsAcquired.Sum(pos => pos.BuildingCount));
             });
+        }
+
+        private void SimulateCommunityChest(Player activePlayer, List<Player> players)
+        {
+            _communityChestEngine.Simulate(activePlayer, players);
+            if (activePlayer.HasBeenBankrupted())
+                SimulateBankruptcyByBanker(activePlayer);
         }
 
         private static void SimulateLandOnJail(Player activePlayer, Random random)

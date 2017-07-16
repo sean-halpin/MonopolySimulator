@@ -3,7 +3,7 @@ namespace MonopolySimulator.Enums
     internal enum CommunityChestCards
     {
         Move_Advance_to_Go,
-        Move_Go_back_to_Old_Kent_Road,
+        Move_Go_back_to_Mediterranean_Avenue,
         Move_Go_to_jail_Move_directly_to_jail_Do_not_pass_Go_Do_not_collect_200,
         Tax_Fine_Pay_hospital_100,
         Tax_Fine_Doctors_fee_Pay_50,

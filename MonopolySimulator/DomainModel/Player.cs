@@ -27,11 +27,12 @@ namespace MonopolySimulator.DomainModel
         public bool Imprisoned { get; private set; }
         public bool PlayerIsAlive { get; private set; }
 
+        public int GetOutOfJailFreeCardCount { get; private set; }
+
         public void PayRent(Position currentPosition)
         {
             var rentDue = currentPosition.rent[currentPosition.BuildingCount];
-            DecreaseBalance(rentDue);
-            currentPosition.owner.IncreaseBalance(rentDue);
+            PayDebt(currentPosition.owner, rentDue);
         }
 
         public bool WantsToPurchasePosition(Position currentPosition)
@@ -112,16 +113,22 @@ namespace MonopolySimulator.DomainModel
         public void Imprison()
         {
             Imprisoned = true;
-            MoveToPositionIndex((int) Name.Jail);
+            MoveToPositionByName(Name.Jail);
         }
 
-        public void MoveToPositionIndex(int positionIndex)
+        public void MoveToPositionByName(Name positionName)
         {
-            PositionIndex = positionIndex;
+            PositionIndex = (int)positionName;
         }
 
         public bool ShouldBeReleasedFromPrison()
         {
+            if (GetOutOfJailFreeCardCount > 0)
+            {
+                GetOutOfJailFreeCardCount -= 1;
+                return true;
+            }
+
             return RollsInPrison.Count == 3 || RollsInPrison.Last().IsADouble();
         }
 
@@ -130,6 +137,17 @@ namespace MonopolySimulator.DomainModel
             Imprisoned = false;
             MoveForward(RollsInPrison.Last().TotalValue());
             RollsInPrison.Clear();
+        }
+
+        public void PayDebt(Player player, int debtAmount)
+        {
+            DecreaseBalance(debtAmount);
+            player.IncreaseBalance(debtAmount);
+        }
+
+        public void RecieveGetOutOfJailFreeCard()
+        {
+            GetOutOfJailFreeCardCount += 1;
         }
     }
 }
