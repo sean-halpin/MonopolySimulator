@@ -9,16 +9,19 @@ namespace MonopolySimulator.DomainModel
 {
     internal class GameEngine
     {
+        private readonly ChanceEngine _chanceEngine;
+        private readonly CommunityChestEngine _communityChestEngine;
         private readonly List<Player> _players;
         private readonly List<Position> _positions;
         private readonly Random _random;
-        private readonly CommunityChestEngine _communityChestEngine;
         private Player _activePlayer;
 
-        public GameEngine(Random random, CommunityChestEngine communityChestEngine, int playerCount, int startingBalance)
+        public GameEngine(Random random, CommunityChestEngine communityChestEngine, ChanceEngine chanceEngine,
+            int playerCount, int startingBalance)
         {
             _random = random;
             _communityChestEngine = communityChestEngine;
+            _chanceEngine = chanceEngine;
             _players = PreparePlayers(playerCount, startingBalance);
             _activePlayer = _players[0];
             _positions = JsonConvert.DeserializeObject<List<Position>>(File.ReadAllText(@"BoardTemplate\board.json"));
@@ -39,10 +42,9 @@ namespace MonopolySimulator.DomainModel
                 switch (currentPosition.type)
                 {
                     case PositionType.go:
-                        SimulatePassingGo(_activePlayer);
                         break;
                     case PositionType.property:
-                        SimulateLandOnVacantProperty(_activePlayer, currentPosition);
+                        SimulateLandOnProperty(_activePlayer, currentPosition);
                         break;
                     case PositionType.communitychest:
                         SimulateCommunityChest(_activePlayer, _players);
@@ -53,6 +55,7 @@ namespace MonopolySimulator.DomainModel
                     case PositionType.railroad:
                         break;
                     case PositionType.chance:
+                        SimulateLandOnChance(_activePlayer);
                         break;
                     case PositionType.jail:
                         SimulateLandOnJail(_activePlayer, _random);
@@ -83,6 +86,13 @@ namespace MonopolySimulator.DomainModel
                     p.PlayerIsAlive,
                     p.PositionsAcquired.Sum(pos => pos.BuildingCount));
             });
+        }
+
+        private void SimulateLandOnChance(Player activePlayer)
+        {
+            _chanceEngine.Simulate(activePlayer);
+            if (activePlayer.HasBeenBankrupted())
+                SimulateBankruptcyByBanker(activePlayer);
         }
 
         private void SimulateCommunityChest(Player activePlayer, List<Player> players)
@@ -164,7 +174,7 @@ namespace MonopolySimulator.DomainModel
             return remainingPlayers[(remainingPlayers.IndexOf(activePlayer) + 1) % remainingPlayers.Count];
         }
 
-        private void SimulateLandOnVacantProperty(Player activePlayer, Position currentPosition)
+        private void SimulateLandOnProperty(Player activePlayer, Position currentPosition)
         {
             if (currentPosition.HasOwner())
             {

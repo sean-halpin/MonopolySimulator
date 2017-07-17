@@ -22,7 +22,7 @@ namespace MonopolySimulator.DomainModel
         public int PositionIndex { get; private set; }
         public List<DiceRoll> Rolls { get; }
         public List<DiceRoll> RollsInPrison { get; }
-        public List<Position> PositionsAcquired { get; set; }
+        public List<Position> PositionsAcquired { get; }
         public int Balance { get; private set; }
         public bool Imprisoned { get; private set; }
         public bool PlayerIsAlive { get; private set; }
@@ -60,7 +60,14 @@ namespace MonopolySimulator.DomainModel
 
         public void MoveForward(int rollValue)
         {
+            if (PositionIndex + rollValue >= 40)
+                IncreaseBalance(200);
             PositionIndex = (PositionIndex + rollValue) % 40;
+        }
+
+        public void MoveBackward(int rollValue)
+        {
+            PositionIndex = (PositionIndex - rollValue) % 40;
         }
 
         public void RollInPrison(Random rnd)
@@ -148,6 +155,16 @@ namespace MonopolySimulator.DomainModel
         public void RecieveGetOutOfJailFreeCard()
         {
             GetOutOfJailFreeCardCount += 1;
+        }
+
+        public int NumberOfHousesBought()
+        {
+            return PositionsAcquired.Sum(p => p.BuildingCount) - PositionsAcquired.Count(p => p.MaxBuildingsReached());
+        }
+
+        public int NumberOfHotelsBought()
+        {
+            return PositionsAcquired.Count(p => p.MaxBuildingsReached());
         }
     }
 }

@@ -31,7 +31,6 @@ namespace MonopolySimulator.DomainModel
                     activePlayer.MoveToPositionByName(Name.MediterraneanAvenue);
                     break;
                 case CommunityChestCards.Move_Go_to_jail_Move_directly_to_jail_Do_not_pass_Go_Do_not_collect_200:
-                    activePlayer.MoveToPositionByName(Name.Jail);
                     activePlayer.Imprison();
                     break;
                 case CommunityChestCards.Tax_Fine_Pay_hospital_100:

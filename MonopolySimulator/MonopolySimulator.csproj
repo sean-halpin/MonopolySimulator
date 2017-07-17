@@ -48,6 +48,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DomainModel\ChanceEngine.cs" />
     <Compile Include="DomainModel\CommunityChestEngine.cs" />
     <Compile Include="Enums\ChanceCards.cs" />
     <Compile Include="Enums\CommunityChestCards.cs" />
