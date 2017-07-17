@@ -15,6 +15,7 @@ namespace MonopolySimulator
                 var communityChestEngine = new CommunityChestEngine(random);
                 var chanceEngine = new ChanceEngine(random);
                 communityChestEngine.Initialise();
+                chanceEngine.Initialise();
                 new GameEngine(random, communityChestEngine, chanceEngine, 4, 1200).RunSimulation();
                 Console.WriteLine();
             }
