@@ -44,7 +44,9 @@ namespace MonopolySimulator.DomainModel
                     case PositionType.go:
                         break;
                     case PositionType.property:
-                        SimulateLandOnProperty(_activePlayer, currentPosition);
+                    case PositionType.railroad:
+                    case PositionType.utility:
+                        SimulateLandOnPropertyRailOrUtility(_activePlayer, currentPosition);
                         break;
                     case PositionType.communitychest:
                         SimulateCommunityChest(_activePlayer, _players);
@@ -52,15 +54,11 @@ namespace MonopolySimulator.DomainModel
                     case PositionType.tax:
                         SimulateLandOnTax(_activePlayer, currentPosition);
                         break;
-                    case PositionType.railroad:
-                        break;
                     case PositionType.chance:
                         SimulateLandOnChance(_activePlayer);
                         break;
                     case PositionType.jail:
                         SimulateLandOnJail(_activePlayer, _random);
-                        break;
-                    case PositionType.utility:
                         break;
                     case PositionType.freeparking:
                         break;
@@ -133,6 +131,7 @@ namespace MonopolySimulator.DomainModel
         {
             return _activePlayer.PositionsAcquired.Where(p => p.type == PositionType.property)
                 .Where(property => _positions.Where(p => p.group != null && p.group[0] == property.group[0])
+                .Where(p => p.group[0] != 9 && p.group[0] != 10)
                     .All(p => p.owner != null && p.owner.Id == activePlayer.Id))
                 .ToList();
         }
@@ -174,7 +173,7 @@ namespace MonopolySimulator.DomainModel
             return remainingPlayers[(remainingPlayers.IndexOf(activePlayer) + 1) % remainingPlayers.Count];
         }
 
-        private void SimulateLandOnProperty(Player activePlayer, Position currentPosition)
+        private void SimulateLandOnPropertyRailOrUtility(Player activePlayer, Position currentPosition)
         {
             if (currentPosition.HasOwner())
             {

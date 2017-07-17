@@ -31,8 +31,54 @@ namespace MonopolySimulator.DomainModel
 
         public void PayRent(Position currentPosition)
         {
-            var rentDue = currentPosition.rent[currentPosition.BuildingCount];
+            var rentDue = 0;
+            switch (currentPosition.type)
+            {
+                case PositionType.property:
+                    rentDue = currentPosition.rent[currentPosition.BuildingCount];
+                    break;
+                case PositionType.railroad:
+                    rentDue = currentPosition.owner.RailRoadRentDue();
+                    break;
+                case PositionType.utility:
+                    rentDue = currentPosition.owner.UtilityRentDue(Rolls.Last().TotalValue());
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
             PayDebt(currentPosition.owner, rentDue);
+        }
+
+        private int UtilityRentDue(int diceRolleValue)
+        {
+            switch (NumberOfUtilitiesOwned())
+            {
+                case 1: return 4 * diceRolleValue;
+                case 2: return 10 * diceRolleValue;
+                default: return 0;
+            };
+        }
+
+        private int NumberOfUtilitiesOwned()
+        {
+            return PositionsAcquired.Count(p => p.group[0] == 10);
+        }
+
+        private int RailRoadRentDue()
+        {
+            switch (NumberOfRailRoadsOwned())
+            {
+                case 1: return 25;
+                case 2: return 50;
+                case 3: return 100;
+                case 4: return 200;
+                default: return 0;
+            }
+        }
+
+        private int NumberOfRailRoadsOwned()
+        {
+            return PositionsAcquired.Count(p => p.group[0] == 9);
         }
 
         public bool WantsToPurchasePosition(Position currentPosition)
@@ -88,12 +134,19 @@ namespace MonopolySimulator.DomainModel
 
         public void DecreaseBalance(int amount)
         {
-            Balance -= amount;
+            if (amount > Balance)
+            {
+                Balance = 0;
+            }
+            else
+            {
+                Balance -= amount;
+            }
         }
 
         public bool HasBeenBankrupted()
         {
-            return Balance < 0;
+            return Balance <= 0;
         }
 
         public void KillPlayer()
@@ -108,7 +161,7 @@ namespace MonopolySimulator.DomainModel
 
         public bool CanAffordExpense(int amount)
         {
-            return Balance - amount >= 0;
+            return Balance - amount > 0;
         }
 
         public void PurchasePosition(Position currentPosition)
@@ -148,8 +201,16 @@ namespace MonopolySimulator.DomainModel
 
         public void PayDebt(Player player, int debtAmount)
         {
-            DecreaseBalance(debtAmount);
-            player.IncreaseBalance(debtAmount);
+            if (debtAmount > Balance)
+            {
+                player.IncreaseBalance(Balance);
+                DecreaseBalance(Balance);
+            }
+            else
+            {
+                DecreaseBalance(debtAmount);
+                player.IncreaseBalance(debtAmount);
+            }
         }
 
         public void RecieveGetOutOfJailFreeCard()
