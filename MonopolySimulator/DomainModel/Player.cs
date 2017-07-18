@@ -7,15 +7,20 @@ namespace MonopolySimulator.DomainModel
 {
     internal class Player
     {
-        private Player(int id, int balance)
+        private readonly Random _random;
+
+        public Player(int id, int balance, Random random)
         {
+            _random = random;
             Id = id;
+            PositionIndex = 0;
             Balance = balance;
             Rolls = new List<DiceRoll>();
             RollsInPrison = new List<DiceRoll>();
             PositionsAcquired = new List<Position>();
             Imprisoned = false;
             PlayerIsAlive = true;
+            GetOutOfJailFreeCardCount = 0;
         }
 
         public int Id { get; }
@@ -86,16 +91,22 @@ namespace MonopolySimulator.DomainModel
             return CanAffordExpense(currentPosition.cost) && true;
         }
 
-        public void RollAndUpdatePosition(Random rnd)
+        public void RollAndUpdatePosition()
         {
             if (!Imprisoned)
             {
-                var roll = new DiceRoll(rnd).Roll();
+                var roll = new DiceRoll(_random).Roll();
                 Rolls.Add(roll);
                 if (LastThreeRollsWereDoubles())
                     Imprison();
                 else
                     MoveForward(roll.TotalValue());
+            }
+            else if (Imprisoned)
+            {
+                RollInPrison();
+                if (ShouldBeReleasedFromPrison())
+                    ReleaseFromPrison();
             }
         }
 
@@ -107,7 +118,9 @@ namespace MonopolySimulator.DomainModel
         public void MoveForward(int rollValue)
         {
             if (PositionIndex + rollValue >= 40)
+            {
                 IncreaseBalance(200);
+            }
             PositionIndex = (PositionIndex + rollValue) % 40;
         }
 
@@ -116,15 +129,10 @@ namespace MonopolySimulator.DomainModel
             PositionIndex = (PositionIndex - rollValue) % 40;
         }
 
-        public void RollInPrison(Random rnd)
+        public void RollInPrison()
         {
-            var roll = new DiceRoll(rnd).Roll();
+            var roll = new DiceRoll(_random).Roll();
             RollsInPrison.Add(roll);
-        }
-
-        public static Player CreateNew(int id, int startingBalance)
-        {
-            return new Player(id, startingBalance);
         }
 
         public void IncreaseBalance(int amount)
@@ -152,6 +160,7 @@ namespace MonopolySimulator.DomainModel
         public void KillPlayer()
         {
             PlayerIsAlive = false;
+            PositionsAcquired.Clear();
         }
 
         public bool WantsToPurchaseBuildingAtPosition(Position property)
@@ -226,6 +235,27 @@ namespace MonopolySimulator.DomainModel
         public int NumberOfHotelsBought()
         {
             return PositionsAcquired.Count(p => p.MaxBuildingsReached());
+        }
+
+        public bool WantsToBid(int bidToMatch, Position currentPosition)
+        {
+            if (CanAffordExpense(bidToMatch))
+            {
+                if (bidToMatch < currentPosition.cost)
+                    return true;
+                return _random.Next(1, 4) == 1;
+            }
+            return false;
+        }
+
+        public void InheritPropertyFromPlayer(Position position)
+        {
+            PositionsAcquired.Add(position);
+        }
+
+        public bool OwnsPosition(Position currentPosition)
+        {
+            return Id == currentPosition.owner?.Id;
         }
     }
 }

@@ -25,7 +25,6 @@ namespace MonopolySimulator.DomainModel
             {
                 case CommunityChestCards.Move_Advance_to_Go:
                     activePlayer.MoveToPositionByName(Name.Go);
-                    activePlayer.IncreaseBalance(200);
                     break;
                 case CommunityChestCards.Move_Go_back_to_Mediterranean_Avenue:
                     activePlayer.MoveToPositionByName(Name.MediterraneanAvenue);
@@ -46,7 +45,7 @@ namespace MonopolySimulator.DomainModel
                     activePlayer.IncreaseBalance(200);
                     break;
                 case CommunityChestCards.Receipt_Annuity_matures_Collect_100:
-                    activePlayer.IncreaseBalance(200);
+                    activePlayer.IncreaseBalance(100);
                     break;
                 case CommunityChestCards.Receipt_You_inherit_100:
                     activePlayer.IncreaseBalance(100);

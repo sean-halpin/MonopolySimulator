@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using MonopolySimulator.Enums;
 using Newtonsoft.Json;
 
@@ -13,36 +14,33 @@ namespace MonopolySimulator.DomainModel
         private readonly CommunityChestEngine _communityChestEngine;
         private readonly List<Player> _players;
         private readonly List<Position> _positions;
-        private readonly Random _random;
         private Player _activePlayer;
+        private int stepCount;
 
         public GameEngine(Random random, CommunityChestEngine communityChestEngine, ChanceEngine chanceEngine,
             int playerCount, int startingBalance)
         {
-            _random = random;
             _communityChestEngine = communityChestEngine;
             _chanceEngine = chanceEngine;
-            _players = PreparePlayers(playerCount, startingBalance);
+            _players = PreparePlayers(playerCount, startingBalance, random);
             _activePlayer = _players[0];
             _positions = JsonConvert.DeserializeObject<List<Position>>(File.ReadAllText(@"BoardTemplate\board.json"));
         }
 
-        private static List<Player> PreparePlayers(int playerCount, int startingBalance)
+        private List<Player> PreparePlayers(int playerCount, int startingBalance, Random random)
         {
-            return Enumerable.Range(0, playerCount).Select(e => Player.CreateNew(e, startingBalance)).ToList();
+            return Enumerable.Range(0, playerCount).Select(e => new Player(e, startingBalance, random)).ToList();
         }
 
         public void RunSimulation()
         {
             while (GameInProgress(_players))
             {
-                _activePlayer.RollAndUpdatePosition(_random);
+                _activePlayer.RollAndUpdatePosition();
                 var currentPosition = _positions[_activePlayer.PositionIndex];
 
                 switch (currentPosition.type)
                 {
-                    case PositionType.go:
-                        break;
                     case PositionType.property:
                     case PositionType.railroad:
                     case PositionType.utility:
@@ -57,13 +55,12 @@ namespace MonopolySimulator.DomainModel
                     case PositionType.chance:
                         SimulateLandOnChance(_activePlayer);
                         break;
-                    case PositionType.jail:
-                        SimulateLandOnJail(_activePlayer, _random);
-                        break;
-                    case PositionType.freeparking:
-                        break;
                     case PositionType.gotojail:
                         SimulateLandOnGoToJail(_activePlayer);
+                        break;
+                    case PositionType.freeparking:
+                    case PositionType.jail:
+                    case PositionType.go:
                         break;
                     default:
                         throw new ArgumentOutOfRangeException();
@@ -71,11 +68,32 @@ namespace MonopolySimulator.DomainModel
 
                 SimulatePlayerRealEstateDecision(_activePlayer);
 
-                _activePlayer = GetNextPlayer(_activePlayer);
+                if (true)
+                {
+                    Console.WriteLine("Id:{0}\tBalance:{1}\tRolls:{2}\tPositions:{3}\tAlive:{4}\tHouses{5}",
+                        _activePlayer.Id,
+                        _activePlayer.Balance,
+                        _activePlayer.Rolls.Count,
+                        _activePlayer.PositionsAcquired.Count,
+                        _activePlayer.PlayerIsAlive,
+                        _activePlayer.PositionsAcquired.Sum(pos => pos.BuildingCount));
+
+                    if (++stepCount % _players.Count(player => player.PlayerIsAlive) == 0)
+                    {
+                        Console.WriteLine();
+                        Console.WriteLine(stepCount);
+                        Thread.Sleep(50);
+                    }
+                }
+
+                _activePlayer = _players[GetNextPlayer(_activePlayer)];
             }
 
+            Console.WriteLine();
+            Console.WriteLine("Finished Game");
             _players.ForEach(p =>
             {
+
                 Console.WriteLine("Id:{0}\tBalance:{1}\tRolls:{2}\tPositions:{3}\tAlive:{4}\tHouses{5}",
                     p.Id,
                     p.Balance,
@@ -100,17 +118,7 @@ namespace MonopolySimulator.DomainModel
                 SimulateBankruptcyByBanker(activePlayer);
         }
 
-        private static void SimulateLandOnJail(Player activePlayer, Random random)
-        {
-            if (activePlayer.Imprisoned)
-            {
-                activePlayer.RollInPrison(random);
-                if (activePlayer.ShouldBeReleasedFromPrison())
-                    activePlayer.ReleaseFromPrison();
-            }
-        }
-
-        private static void SimulateLandOnGoToJail(Player activePlayer)
+        private void SimulateLandOnGoToJail(Player activePlayer)
         {
             activePlayer.Imprison();
         }
@@ -152,57 +160,73 @@ namespace MonopolySimulator.DomainModel
             }
             var propertiesToBeAuctionedImmediately = activePlayer.PositionsAcquired;
             foreach (var property in propertiesToBeAuctionedImmediately)
-                SimulateAuction(property);
+                SimulateAuction(_players, property);
             activePlayer.KillPlayer();
         }
 
-        private static void SimulatePassingGo(Player activePlayer)
-        {
-            activePlayer.IncreaseBalance(200);
-        }
-
-        private static bool GameInProgress(IEnumerable<Player> players)
+        private bool GameInProgress(IEnumerable<Player> players)
         {
             return players.Count(p => p.PlayerIsAlive) > 1;
         }
 
-        private Player GetNextPlayer(Player activePlayer)
+        private int GetNextPlayer(Player activePlayer)
         {
             var remainingPlayers = _players.Where(player => player.PlayerIsAlive || player.Id == activePlayer.Id)
                 .ToList();
-            return remainingPlayers[(remainingPlayers.IndexOf(activePlayer) + 1) % remainingPlayers.Count];
+            return remainingPlayers[(remainingPlayers.IndexOf(activePlayer) + 1) % remainingPlayers.Count].Id;
         }
 
         private void SimulateLandOnPropertyRailOrUtility(Player activePlayer, Position currentPosition)
         {
-            if (currentPosition.HasOwner())
+            if (!activePlayer.OwnsPosition(currentPosition))
             {
-                activePlayer.PayRent(currentPosition);
-                if (activePlayer.HasBeenBankrupted())
-                    SimulateBankruptcyByPlayer(activePlayer, currentPosition.owner);
-            }
-            else
-            {
-                if (activePlayer.WantsToPurchasePosition(currentPosition))
-                    activePlayer.PurchasePosition(currentPosition);
+                if (currentPosition.HasOwner())
+                {
+                    activePlayer.PayRent(currentPosition);
+                    if (activePlayer.HasBeenBankrupted())
+                        SimulateBankruptcyByPlayer(activePlayer, currentPosition.owner);
+                }
                 else
-                    SimulateAuction(currentPosition);
+                {
+                    if (activePlayer.WantsToPurchasePosition(currentPosition))
+                        activePlayer.PurchasePosition(currentPosition);
+                    else
+                        SimulateAuction(_players, currentPosition);
+                }
             }
         }
 
-        private static void SimulateBankruptcyByPlayer(Player activePlayer, Player currentPositionOwner)
+        private void SimulateBankruptcyByPlayer(Player activePlayer, Player currentPositionOwner)
         {
             foreach (var property in activePlayer.PositionsAcquired)
             {
                 property.DemolishBuildings();
                 property.AssignNewOwner(currentPositionOwner);
+                currentPositionOwner.InheritPropertyFromPlayer(property);
             }
             activePlayer.KillPlayer();
         }
 
-        private void SimulateAuction(Position currentPosition)
+        private void SimulateAuction(List<Player> players, Position currentPosition)
         {
-            //throw new NotImplementedException();
+            Player highestBidder = null;
+            var highestBid = 20;
+            const int minIncrease = 20;
+            var higherBidderFound = true;
+            while (higherBidderFound)
+            {
+                foreach (var bidder in players.Where(p => p.PlayerIsAlive))
+                {
+                    higherBidderFound = false;
+                    if (bidder.WantsToBid(highestBid + minIncrease, currentPosition))
+                    {
+                        highestBidder = bidder;
+                        highestBid += minIncrease;
+                        higherBidderFound = true;
+                    }
+                }
+            }
+            highestBidder.PurchasePosition(currentPosition);
         }
     }
 }
